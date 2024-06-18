@@ -4,8 +4,6 @@ FROM node:21
 # Create and change to the app directory.
 WORKDIR /usr/src/app
 
-# Set NODE_ENV to production by default
-ENV NODE_ENV=production
 
 # Install dependencies.
 COPY package*.json ./
@@ -14,6 +12,8 @@ RUN npm install
 # Copy the source code.
 COPY . .
 
+# Set NODE_ENV to production by default
+ENV NODE_ENV=production
 # Build the TypeScript code.
 RUN npm run build
 
