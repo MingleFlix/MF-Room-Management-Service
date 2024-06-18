@@ -54,4 +54,5 @@ jobs:
           helm upgrade --install room-management ./helm/room-management \
           --values ./helm/room-management/values.yaml \
           --set image.tag=${{ github.sha }} \
+          --set env.REDIS_HOST=room-management-redis-master \
           --namespace default
