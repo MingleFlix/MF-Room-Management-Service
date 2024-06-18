@@ -46,6 +46,9 @@ jobs:
       - name: Install Helm
         run: |
           curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
+      - name: install dependencies
+        run: |
+          helm dependency update ./helm/room-management
       - name: Deploy to Kubernetes using Helm
         run: |
           helm upgrade --install room-management ./helm/room-management \
