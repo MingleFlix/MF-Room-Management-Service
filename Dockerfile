@@ -4,6 +4,9 @@ FROM node:21
 # Create and change to the app directory.
 WORKDIR /usr/src/app
 
+# Set NODE_ENV to production by default
+ENV NODE_ENV=production
+
 # Install dependencies.
 COPY package*.json ./
 RUN npm install

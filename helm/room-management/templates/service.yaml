@@ -8,6 +8,6 @@ spec:
   type: {{ .Values.service.type }}
   ports:
     - port: {{ .Values.service.port }}
-      targetPort: 3000
+      targetPort: {{ .Values.service.targetPort }}
   selector:
     {{- include "room-management.selectorLabels" . | nindent 4 }}
