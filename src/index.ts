@@ -4,10 +4,11 @@ import WebSocket from "ws";
 import dotenv from 'dotenv';
 import {authenticateJWT} from "./lib/authHelper";
 import {redisClient} from "./redis";
-import routes from "./routes";
+import routes from "./routes/routes";
 import swaggerJsDoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 import swaggerOptions from './swaggerOptions';
+import cookieParser from "cookie-parser";
 
 dotenv.config();
 
@@ -17,6 +18,9 @@ const port = process.env.PORT || 3001;
 // Swagger setup
 const specs = swaggerJsDoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
+
+// Use cookie-parser middleware
+app.use(cookieParser());
 
 // Express server
 app.use(express.json());

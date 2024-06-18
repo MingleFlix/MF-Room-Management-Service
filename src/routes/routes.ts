@@ -1,8 +1,8 @@
 import express, {Router} from "express";
-import authMiddleware, {AuthRequest} from "./middlewares/authMiddleware";
+import authMiddleware, {AuthRequest} from "../middlewares/authMiddleware";
 import {randomUUID} from "node:crypto";
-import {redisClient} from "./redis";
-import {createRoomData, Room} from "./types/room";
+import {redisClient} from "../redis";
+import {createRoomData, Room} from "../types/room";
 
 const router: Router = express.Router();
 

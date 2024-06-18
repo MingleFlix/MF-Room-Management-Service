@@ -7,7 +7,7 @@ export interface AuthRequest extends Request {
 
 const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
     const authRequest = req as AuthRequest;
-    const token = authRequest.headers['authorization']?.split(' ')[1];
+    const token = authRequest.cookies['auth_token'];
 
     if (!token) {
         return res.status(401).json({ message: 'Access denied, no token provided' });
