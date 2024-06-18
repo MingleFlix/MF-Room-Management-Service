@@ -55,4 +55,5 @@ jobs:
           --values ./helm/room-management/values.yaml \
           --set image.tag=${{ github.sha }} \
           --set env.REDIS_HOST=room-management-redis-master \
+          --set env.PORT=3001 \
           --namespace default
