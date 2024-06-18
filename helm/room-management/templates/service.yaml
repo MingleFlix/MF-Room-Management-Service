@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "room-management.fullname" . }}
+  labels:
+    {{- include "room-management.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: 3000
+  selector:
+    {{- include "room-management.selectorLabels" . | nindent 4 }}
