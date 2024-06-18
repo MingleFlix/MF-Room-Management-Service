@@ -1,53 +1,59 @@
 import express from 'express';
-import { createClient } from 'redis';
 import {randomUUID} from "node:crypto";
+import WebSocket from "ws";
+import {authenticateJWT} from "./lib/authHelper";
+import {redisClient} from "./redis";
+import {AuthRequest} from "./middlewares/authMiddleware";
+import routes from "./routes";
 
 const app = express();
 const port = 3000;
-const redisHost = process.env.REDIS_HOST || 'localhost';
 
-// Set up Redis client
-const redisClient = createClient({ url: `redis://${redisHost}:6379` });
-redisClient.connect().catch(console.error);
+// Websocket server
+const wss = new WebSocket.Server({ port: 8080 });
 
+wss.on('connection', async (ws, req) => {
+    // Authenticate user via JWT (simplified example)
+    // Parse room ID from query parameters
+    const params = new URLSearchParams(req.url?.substring(1));
+    const roomID = params.get('roomID');
+    const token = params.get('token');
+    let user: any;
+    try {
+        user = authenticateJWT(token || '');
+    } catch (error) {
+        console.error('Error authenticating user:', error);
+    }
+
+
+    if (!user || !roomID) {
+        ws.close();
+        return;
+    }
+    //check if roomID is valid and in db
+    const room =  await redisClient.hGet('rooms', roomID);
+    if (!room) {
+        ws.close();
+        return;
+    }
+
+    ws.on('message', async (message) => {
+        const event = JSON.parse(message as any);
+        const roomID = event.roomID;
+
+        // Publish the event to Redis
+        await redisClient.publish(roomID, JSON.stringify(event));
+    });
+});
+
+// Express server
 app.use(express.json());
 
 app.get('/', (req, res) => {
     res.send('Room Management Service');
 });
 
-// Endpoint to create a room
-app.post('/rooms', async (req, res) => {
-    const { name } = req.body;
-    const roomId = randomUUID()
-    const newRoom = { id: roomId, name };
-
-    await redisClient.hSet('rooms', roomId, JSON.stringify(newRoom));
-    res.status(201).json(newRoom);
-});
-
-// Endpoint to get all rooms
-app.get('/rooms', async (req, res) => {
-    const rooms = await redisClient.hGetAll('rooms');
-    const roomList = Object.values(rooms).map(room => JSON.parse(room));
-    res.json(roomList);
-});
-
-// Endpoint to get a single room by id
-app.get('/rooms/:id', async (req, res) => {
-    const room = await redisClient.hGet('rooms', req.params.id);
-    if (room) {
-        res.json(JSON.parse(room));
-    } else {
-        res.status(404).send('Room not found');
-    }
-});
-
-// Endpoint to delete a room by id
-app.delete('/rooms/:id', async (req, res) => {
-    await redisClient.hDel('rooms', req.params.id);
-    res.status(204).send();
-});
+app.use('/rooms', routes);
 
 app.listen(port, () => {
     console.log(`Room Management Service is running on http://localhost:${port}`);
