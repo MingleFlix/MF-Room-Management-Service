@@ -1,5 +1,6 @@
 import express from 'express';
 import { createClient } from 'redis';
+import {randomUUID} from "node:crypto";
 
 const app = express();
 const port = 3000;
@@ -18,7 +19,7 @@ app.get('/', (req, res) => {
 // Endpoint to create a room
 app.post('/rooms', async (req, res) => {
     const { name } = req.body;
-    const roomId = Date.now().toString(); // Simple unique ID
+    const roomId = randomUUID()
     const newRoom = { id: roomId, name };
 
     await redisClient.hSet('rooms', roomId, JSON.stringify(newRoom));
