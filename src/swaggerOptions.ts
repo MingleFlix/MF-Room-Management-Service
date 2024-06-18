@@ -1,3 +1,9 @@
+// Determine the environment
+import path from "node:path";
+
+const dev = process.env.NODE_ENV !== 'production';
+const apiDocsPath = dev ? './src/routes/*.ts' : './dist/routes/*.js';
+
 const options = {
     definition: {
         openapi: '3.0.0',
@@ -37,7 +43,7 @@ const options = {
             },
         },
     },
-    apis: ['./routes.ts'],
+    apis: [path.resolve(apiDocsPath)], // Path to the API docs
 };
 
 export default options;
