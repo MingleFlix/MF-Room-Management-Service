@@ -1,12 +1,15 @@
 import express from 'express';
 import {randomUUID} from "node:crypto";
 import WebSocket from "ws";
+import dotenv from 'dotenv';
 import {authenticateJWT} from "./lib/authHelper";
 import {redisClient} from "./redis";
 import routes from "./routes";
 import swaggerJsDoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 import swaggerOptions from './swaggerOptions';
+
+dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3001;
