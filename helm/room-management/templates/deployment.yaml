@@ -26,6 +26,11 @@ spec:
           ports:
             - containerPort: {{ .Values.containerPort }}
           env:
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.jwtSecret.name }}
+                  key: {{ .Values.jwtSecret.key }}
             - name: REDIS_HOST
               value: {{ .Values.env.REDIS_HOST }}
           resources:

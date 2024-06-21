@@ -25,6 +25,10 @@ resources:
 imagePullSecrets:
   - name: ghcr-io-secret
 
+jwtSecret:
+  name: jwt-secret
+  key: JWT_SECRET
+
 env:
   REDIS_HOST: room-management-redis-master
 
