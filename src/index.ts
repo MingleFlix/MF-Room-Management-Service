@@ -31,7 +31,7 @@ app.get('/', (req, res) => {
 app.use('/rooms', routes);
 
 const server = app.listen(port, () => {
-    console.log(`Room Management Service is running on http://localhost:${port}`);
+    console.log(`Room Management Service is running on port ${port}`);
 });
 
 // Websocket server
@@ -55,12 +55,14 @@ wss.on('connection', async (ws, req) => {
 
 
     if (!user || !roomID) {
+        ws.send('Invalid roomID or token')
         ws.close();
         return;
     }
     //check if roomID is valid and in db
     const room =  await redisClient.hGet('rooms', roomID);
     if (!room) {
+        ws.send('Invalid roomID');
         ws.close();
         return;
     }
