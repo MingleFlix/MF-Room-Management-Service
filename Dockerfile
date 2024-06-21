@@ -21,4 +21,4 @@ RUN npm run build
 CMD ["node", "dist/index.js"]
 
 # Expose the port.
-EXPOSE 3000
+EXPOSE 3001

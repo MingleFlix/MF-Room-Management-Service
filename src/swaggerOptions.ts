@@ -12,11 +12,11 @@ const options = {
             version: '1.0.0',
             description: 'APIs for managing rooms',
         },
-        servers: [
-            {
-                url: 'http://localhost:3000',
-            },
-        ],
+        // servers: [
+        //     {
+        //         url: 'http://localhost:3001',
+        //     },
+        // ],
         components: {
             schemas: {
                 Room: {

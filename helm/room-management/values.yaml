@@ -10,9 +10,9 @@ image:
 service:
   type: ClusterIP
   port: 80
-  targetPort: 3000
+  targetPort: 3001
 
-containerPort: 3000
+containerPort: 3001
 
 resources:
   limits:
