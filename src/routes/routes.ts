@@ -1,5 +1,5 @@
 import express, {Router} from "express";
-import authMiddleware, {AuthRequest} from "../middlewares/authMiddleware";
+import authMiddleware from "../middlewares/authMiddleware";
 import {randomUUID} from "node:crypto";
 import {redisClient} from "../redis";
 import {createRoomData, Room} from "../types/room";
@@ -29,9 +29,16 @@ router.use(authMiddleware);
  */
 router.post('/', async (req, res) => {
     const {name} = req.body as createRoomData;
-    const userID = (req as AuthRequest).user?.userId;
+    const {userId, username } = req.user;
     const roomId = randomUUID()
-    const newRoom: Room = {id: roomId, name, users: [userID]};
+    const newRoom: Room = {
+        id: roomId,
+        name,
+        users: [{
+            name: username,
+            id: userId
+        }]
+    };
 
     await redisClient.hSet('rooms', roomId, JSON.stringify(newRoom));
     res.status(201).json(newRoom);
