@@ -29,15 +29,11 @@ router.use(authMiddleware);
  */
 router.post('/', async (req, res) => {
     const {name} = req.body as createRoomData;
-    const {userId, username } = req.user;
     const roomId = randomUUID()
     const newRoom: Room = {
         id: roomId,
         name,
-        users: [{
-            name: username,
-            id: userId
-        }]
+        users: []
     };
 
     await redisClient.hSet('rooms', roomId, JSON.stringify(newRoom));

@@ -1,8 +1,8 @@
 import express from 'express';
 import WebSocket from "ws";
 import dotenv from 'dotenv';
-import {authenticateJWT} from "./lib/authHelper";
-import {redisClient} from "./redis";
+import {authenticateJWT, JWTPayload} from "./lib/authHelper";
+import {redisClient, subscriberClient} from "./redis";
 import routes from "./routes/routes";
 import swaggerJsDoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
@@ -51,20 +51,19 @@ wss.on('connection', async (ws, req) => {
     const token = params.get('token');
     console.log('roomID:', roomID);
     console.log('token:', token);
-    let user: any;
+    let newUser: JWTPayload | undefined;
     try {
-        user = authenticateJWT(token || '');
+        newUser = authenticateJWT(token || '');
     } catch (error) {
         console.error('Error authenticating user:', error);
     }
 
-
-    if (!user || !roomID) {
+    if (!newUser || !roomID) {
         ws.send('Invalid roomID or token')
         ws.close();
         return;
     }
-    //check if roomID is valid and in db
+    //check if roomID is valid and in db todo: use transaction to prevent data loss!
     const roomData = await redisClient.hGet('rooms', roomID);
     if (!roomData) {
         ws.send('Invalid roomID');
@@ -72,17 +71,31 @@ wss.on('connection', async (ws, req) => {
         return;
     }
 
+    console.log('User:', newUser);
     let room: Room = JSON.parse(roomData);
     console.log('Room:', room);
 
-    // Add user to the room
-    room.users.push({
-        id: user.userId,
-        name: user.username
-    });
+    // Add user to the room if not already present
+    if (!room.users.find(u => u.id === newUser?.userId)) {
+        room.users.push({
+            name: newUser.username,
+            id: newUser.userId
+        });
 
-    // Update the room in Redis
-    await redisClient.hSet('rooms', roomID, JSON.stringify(room));
+        // Update the room in Redis
+        await redisClient.hSet('rooms', roomID, JSON.stringify(room));
+
+        // Notify all users about the new user
+        const newUserEvent: UserEvent = {
+            type: 'USER_JOINED',
+            roomID: roomID,
+            user: newUser.username,
+            users: room.users
+        };
+
+        // Publish the new user event to all users in the room
+        await redisClient.publish(roomID, JSON.stringify(newUserEvent));
+    }
 
     // Send the current state of the room to the newly joined user
     ws.send(JSON.stringify({
@@ -90,17 +103,6 @@ wss.on('connection', async (ws, req) => {
         room: room
     }));
 
-
-    // Notify all users about the new user
-    const newUserEvent: UserEvent = {
-        type: 'USER_JOINED',
-        roomID: roomID,
-        user: user.username,
-        users: room.users
-    };
-
-    // Publish the new user event to all users in the room
-    await redisClient.publish(roomID, JSON.stringify(newUserEvent));
 
     ws.on('message', async (message) => {
         const event = JSON.parse(message as any);
@@ -113,7 +115,7 @@ wss.on('connection', async (ws, req) => {
 
     ws.on('close', async () => {
         // Remove user from the room on disconnect
-        room.users = room.users.filter(username => username !== user.username);
+        room.users = room.users.filter(roomUser => roomUser.name !== newUser?.username);
 
         // Update the room in Redis
         await redisClient.hSet('rooms', roomID, JSON.stringify(room));
@@ -121,7 +123,7 @@ wss.on('connection', async (ws, req) => {
         // Notify all users about the user leaving
         const userLeftEvent: UserEvent = {
             type: 'USER_LEFT',
-            user: user.username,
+            user: newUser.username,
             roomID: roomID,
             users: room.users
         };
@@ -131,7 +133,7 @@ wss.on('connection', async (ws, req) => {
 });
 
 // Subscribe to Redis channels for room updates
-redisClient.on('message', (channel, message) => {
+subscriberClient.on('message', (channel, message) => {
     const event = JSON.parse(message);
 
     // Relay the message to all WebSocket clients in the room
@@ -144,7 +146,7 @@ redisClient.on('message', (channel, message) => {
     }
 });
 
-redisClient.on('subscribe', (channel, _count) => {
+subscriberClient.on('subscribe', (channel, _count) => {
     console.log(`Subscribed to channel: ${channel}`);
 });
 
@@ -152,11 +154,13 @@ redisClient.on('subscribe', (channel, _count) => {
 (async () => {
     const roomKeys = await redisClient.hKeys('rooms');
     roomKeys.forEach(roomID => {
-        redisClient.subscribe(roomID, (err, _count) => {
-            if (err) {
-                console.error(`Error subscribing to channel: ${roomID}`);
-            } else {
-                console.log(`Subscribed to channel: ${roomID}`);
+        console.log(`Try subscribing to channel: ${roomID}`);
+        subscriberClient.subscribe(roomID, (channel, message) => {
+            console.log(`Received message from channel ${channel}: ${message}`);
+            if (roomClients[channel]) {
+                roomClients[channel].forEach((ws: WebSocket) => {
+                    ws.send(message);
+                });
             }
         });
     });
