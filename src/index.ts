@@ -88,6 +88,20 @@ wss.on('connection', async (ws, req) => {
         return;
     }
 
+    // Send ping messages every 30 seconds
+    const pingInterval = setInterval(() => {
+        if (ws.readyState === ws.OPEN) {
+            ws.ping();
+        } else {
+            clearInterval(pingInterval);
+        }
+    }, 30000);
+
+    ws.on('pong', () => {
+        console.log('Pong received');
+    });
+
+
     // Room exists
     console.log('User:', newUser);
     room = JSON.parse(roomData);
@@ -136,6 +150,12 @@ wss.on('connection', async (ws, req) => {
 
 
     ws.on('close', async () => {
+        const roomData = await redisClient.hGet('rooms', roomID);
+        if (!roomData) {
+            console.error('Room not found in Redis');
+            return;
+        }
+        room = JSON.parse(roomData);
         // Remove user from the room on disconnect
         room.users = room.users.filter(roomUser => roomUser.id !== newUser?.userId);
 
