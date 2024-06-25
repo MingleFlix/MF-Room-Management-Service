@@ -2,7 +2,7 @@ import express from 'express';
 import WebSocket from "ws";
 import dotenv from 'dotenv';
 import {authenticateJWT, JWTPayload} from "./lib/authHelper";
-import {redisClient, subscriberClient} from "./redis";
+import {redisClient, roomClients, subscriberClient, subscribeToRoom} from "./redis";
 import routes from "./routes/routes";
 import swaggerJsDoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
@@ -39,9 +39,7 @@ const server = app.listen(port, () => {
 // Websocket server
 const wss = new WebSocket.Server({ server: server});
 
-// Mapping of roomID to connected WebSocket clients
-const roomClients: { [roomID: string]: Set<WebSocket> } = {};
-
+let room: Room;
 wss.on('connection', async (ws, req) => {
     console.log('New WebSocket connection');
     // Authenticate user via JWT (simplified example)
@@ -58,22 +56,46 @@ wss.on('connection', async (ws, req) => {
         console.error('Error authenticating user:', error);
     }
 
-    if (!newUser || !roomID) {
-        ws.send('Invalid roomID or token')
+    // ERROR handling
+    if (!newUser ) {
+        const msg = {
+            type: 'UNAUTHORIZED',
+            message: 'Invalid token provided'
+        }
+        ws.send(JSON.stringify(msg));
+        ws.close();
+        return;
+    }
+
+    if (!roomID) {
+        const msg = {
+            type: 'ERROR',
+            message: 'Invalid roomID provided'
+        }
+        ws.send(JSON.stringify(msg));
         ws.close();
         return;
     }
     //check if roomID is valid and in db todo: use transaction to prevent data loss!
     const roomData = await redisClient.hGet('rooms', roomID);
     if (!roomData) {
-        ws.send('Invalid roomID');
+        const msg = {
+            type: 'NOT_FOUND',
+            message: 'Room not found'
+        }
+        ws.send(JSON.stringify(msg));
         ws.close();
         return;
     }
 
+    // Room exists
     console.log('User:', newUser);
-    let room: Room = JSON.parse(roomData);
+    room = JSON.parse(roomData);
     console.log('Room:', room);
+
+    // Add the user to the roomClients map
+    roomClients[roomID] = roomClients[roomID] || new Set();
+    roomClients[roomID].add(ws);
 
     // Add user to the room if not already present
     if (!room.users.find(u => u.id === newUser?.userId)) {
@@ -115,10 +137,15 @@ wss.on('connection', async (ws, req) => {
 
     ws.on('close', async () => {
         // Remove user from the room on disconnect
-        room.users = room.users.filter(roomUser => roomUser.name !== newUser?.username);
+        room.users = room.users.filter(roomUser => roomUser.id !== newUser?.userId);
 
         // Update the room in Redis
         await redisClient.hSet('rooms', roomID, JSON.stringify(room));
+        // Remove the user from the roomClients map
+        roomClients[roomID].delete(ws);
+        if (roomClients[roomID].size === 0) {
+            delete roomClients[roomID];
+        }
 
         // Notify all users about the user leaving
         const userLeftEvent: UserEvent = {
@@ -132,18 +159,9 @@ wss.on('connection', async (ws, req) => {
     });
 });
 
-// Subscribe to Redis channels for room updates
+// Subscribe to Redis channels for room updates TODO: Remove? callback gets defined on subscribe
 subscriberClient.on('message', (channel, message) => {
-    const event = JSON.parse(message);
-
-    // Relay the message to all WebSocket clients in the room
-    const roomID = event.roomID;
-    const clients = roomClients[roomID];
-    if (clients) {
-        clients.forEach((ws: WebSocket) => {
-            ws.send(message);
-        });
-    }
+    console.log(`2Received message from channel ${channel}: ${message}`);
 });
 
 subscriberClient.on('subscribe', (channel, _count) => {
@@ -155,13 +173,6 @@ subscriberClient.on('subscribe', (channel, _count) => {
     const roomKeys = await redisClient.hKeys('rooms');
     roomKeys.forEach(roomID => {
         console.log(`Try subscribing to channel: ${roomID}`);
-        subscriberClient.subscribe(roomID, (channel, message) => {
-            console.log(`Received message from channel ${channel}: ${message}`);
-            if (roomClients[channel]) {
-                roomClients[channel].forEach((ws: WebSocket) => {
-                    ws.send(message);
-                });
-            }
-        });
+        subscribeToRoom(roomID)
     });
 })();

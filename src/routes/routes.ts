@@ -1,7 +1,7 @@
 import express, {Router} from "express";
 import authMiddleware from "../middlewares/authMiddleware";
 import {randomUUID} from "node:crypto";
-import {redisClient} from "../redis";
+import {redisClient, subscribeToRoom} from "../redis";
 import {createRoomData, Room} from "../types/room";
 
 const router: Router = express.Router();
@@ -37,6 +37,7 @@ router.post('/', async (req, res) => {
     };
 
     await redisClient.hSet('rooms', roomId, JSON.stringify(newRoom));
+    await subscribeToRoom(roomId);
     res.status(201).json(newRoom);
 });
 
