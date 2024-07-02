@@ -11,7 +11,7 @@ import {Room, UserEvent} from "./types/room";
 import withRetries from "./lib/retryHelper";
 
 dotenv.config();
-const { redisClient, roomClients, subscriberClient, subscribeToRoom } = require("./redis");
+const { redisClient, roomClients, subscribeToRoom } = require("./redis");
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -199,10 +199,6 @@ wss.on('connection', async (ws, req) => {
     ws.on('pong', () => {
         console.log('Pong received');
     });
-});
-
-subscriberClient.on('subscribe', (channel: any, _count: any) => {
-    console.log(`Subscribed to channel: ${channel}`);
 });
 
 // Subscribe to all room channels

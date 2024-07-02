@@ -17,6 +17,7 @@ subscriberClient.connect().catch(console.error);
 export const roomClients: { [roomID: string]: Set<WebSocket> } = {};
 
 export const subscribeToRoom = async (roomID: string) => {
+    console.log(`Subscribing to room ${roomID}`);
     await subscriberClient.subscribe(roomID, (msg, channel) => {
         console.log(`Received message from channel ${channel}: ${msg}`);
         if (roomClients[channel]) {
