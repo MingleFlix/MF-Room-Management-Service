@@ -2,7 +2,6 @@ import express from 'express';
 import WebSocket from "ws";
 import dotenv from 'dotenv';
 import {authenticateJWT, JWTPayload} from "./lib/authHelper";
-import {redisClient, roomClients, subscriberClient, subscribeToRoom} from "./redis";
 import routes from "./routes/routes";
 import swaggerJsDoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
@@ -11,6 +10,7 @@ import cookieParser from "cookie-parser";
 import {Room, UserEvent} from "./types/room";
 
 dotenv.config();
+const { redisClient, roomClients, subscriberClient, subscribeToRoom } = require("./redis");
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -179,19 +179,14 @@ wss.on('connection', async (ws, req) => {
     });
 });
 
-// Subscribe to Redis channels for room updates TODO: Remove? callback gets defined on subscribe
-subscriberClient.on('message', (channel, message) => {
-    console.log(`2Received message from channel ${channel}: ${message}`);
-});
-
-subscriberClient.on('subscribe', (channel, _count) => {
+subscriberClient.on('subscribe', (channel: any, _count: any) => {
     console.log(`Subscribed to channel: ${channel}`);
 });
 
 // Subscribe to all room channels
 (async () => {
     const roomKeys = await redisClient.hKeys('rooms');
-    roomKeys.forEach(roomID => {
+    roomKeys.forEach((roomID: any) => {
         console.log(`Try subscribing to channel: ${roomID}`);
         subscribeToRoom(roomID)
     });

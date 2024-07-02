@@ -4,6 +4,8 @@ import WebSocket from "ws";
 
 const redisHost = process.env.REDIS_HOST || 'localhost';
 
+console.log(`Connecting to Redis at ${redisHost}`);
+
 // Set up Redis client
 export const redisClient = createClient({ url: `redis://${redisHost}:6379` });
 redisClient.connect().catch(console.error);
