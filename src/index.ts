@@ -111,6 +111,9 @@ wss.on('connection', async (ws, req) => {
     roomClients[roomID] = roomClients[roomID] || new Set();
     roomClients[roomID].add(ws);
 
+    // subscribe to the room channel
+    await subscribeToRoom(roomID);
+
     // Add user to the room if not already present
     if (!room.users.find(u => u.id === newUser?.userId)) {
         room.users.push({
