@@ -1,5 +1,5 @@
 # Default values for room-management.
-replicaCount: 3
+replicaCount: 1
 revisionHistoryLimit: 3
 
 image:
