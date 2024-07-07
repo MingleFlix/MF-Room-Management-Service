@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "MF-room-management",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}
