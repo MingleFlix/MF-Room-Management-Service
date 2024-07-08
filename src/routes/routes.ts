@@ -33,7 +33,8 @@ router.post('/', async (req, res) => {
     const newRoom: Room = {
         id: roomId,
         name,
-        users: []
+        users: [],
+        owner: req.user.userId
     };
 
     await redisClient.hSet('rooms', roomId, JSON.stringify(newRoom));

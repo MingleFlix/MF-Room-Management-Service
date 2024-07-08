@@ -200,12 +200,3 @@ wss.on('connection', async (ws, req) => {
         console.log('Pong received');
     });
 });
-
-// Subscribe to all room channels
-                        // (async () => {
-                        //     const roomKeys = await redisClient.hKeys('rooms');
-                        //     roomKeys.forEach((roomID: any) => {
-                        //         console.log(`Try subscribing to channel: ${roomID}`);
-                        //         subscribeToRoom(roomID)
-                        //     });
-                        // })();
