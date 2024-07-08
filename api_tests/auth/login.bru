@@ -1,0 +1,38 @@
+meta {
+  name: login
+  type: http
+  seq: 2
+}
+
+post {
+  url: http://localhost:3000/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "test@test.de",
+    "password": "12345"
+  }
+}
+
+body:multipart-form {
+  username: jesse
+  email: test@test.de
+  password: 12345
+}
+
+tests {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200)
+  });
+  test("Response time is less than 500ms", function () {
+      expect(res.responseTime).to.be.below(500);
+  });
+  test("Response contains JWT token", function () {
+      var jsonData = res.getBody();
+      expect(jsonData).to.have.property("token");
+      bru.setEnvVar("auth_token", jsonData.token);
+  });
+}

@@ -1,0 +1,28 @@
+meta {
+  name: deleteById
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{base_url}}/rooms/{{id}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("Status code is 204", function () {
+      expect(res.getStatus()).to.equal(204);
+  });
+  
+  test("Response time is less than 500ms", function () {
+      expect(res.getResponseTime()).to.be.below(500);
+  });
+  
+  test("Room not found", function () {
+      if (res.getStatus() === 404) {
+          let data = res.getBody();
+          expect(data).to.equal("Room not found");
+      }
+  });
+}

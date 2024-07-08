@@ -1,0 +1,38 @@
+meta {
+  name: getById
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/rooms/{{id}}
+  body: none
+  auth: none
+}
+
+headers {
+  Cookie: auth_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsImVtYWlsIjoidGVzdEB0ZXN0LmRlIiwidXNlcm5hbWUiOiJqZXNzZSIsImlhdCI6MTcxOTkyMDc5MiwiZXhwIjoxNzIwNTI1NTkyfQ.0n5w3hXInUQ05WDgbAANm_wOrPWOMXbr3y_ZTh1_3jE
+}
+
+tests {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response time is less than 500ms", function () {
+      expect(res.getResponseTime()).to.be.below(500);
+  });
+  
+  test("Response contains room details", function () {
+      let data = res.getBody();
+      expect(data).to.have.property("id");
+      expect(data).to.have.property("name");
+  });
+  
+  test("Room not found", function () {
+      if (res.getStatus() === 404) {
+          let data = res.getBody();
+          expect(data).to.equal("Room not found");
+      }
+  });
+}
