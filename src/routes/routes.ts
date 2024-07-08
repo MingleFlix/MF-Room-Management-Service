@@ -1,3 +1,7 @@
+/*
+ * Author: Jesse Günzl
+ * Matrikelnummer: 2577166
+ */
 import express, {Router} from "express";
 import authMiddleware from "../middlewares/authMiddleware";
 import {createRoomData} from "../types/room";

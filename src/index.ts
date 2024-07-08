@@ -1,13 +1,17 @@
+/*
+ * Author: Jesse Günzl
+ * Matrikelnummer: 2577166
+ */
 import express from 'express';
 import WebSocket from "ws";
 import dotenv from 'dotenv';
-import {authenticateJWT, JWTPayload} from "./lib/authHelper";
+import { authenticateJWT, JWTPayload } from "./lib/authHelper";
 import routes from "./routes/routes";
 import swaggerJsDoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 import swaggerOptions from './swaggerOptions';
 import cookieParser from "cookie-parser";
-import {Room, UserEvent} from "./types/room";
+import { Room, UserEvent } from "./types/room";
 import withRetries from "./lib/retryHelper";
 
 dotenv.config();
@@ -16,40 +20,44 @@ const { client, roomClients, subscribeToRoom } = require("./redis");
 const app = express();
 const port = process.env.PORT || 3001;
 
-// Swagger setup
+// Swagger setup for API documentation
 const specs = swaggerJsDoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
-// Use cookie-parser middleware
+// Use cookie-parser middleware to parse cookies
 app.use(cookieParser());
 
-// Express server
+// Middleware to parse JSON bodies
 app.use(express.json());
 
+// Basic route for the service
 app.get('/', (req, res) => {
     res.send('Room Management Service');
 });
 
+// Routes for room management
 app.use('/rooms', routes);
 
+// Start the Express server
 const server = app.listen(port, () => {
     console.log(`Room Management Service is running on port ${port}`);
 });
 
-
-// Websocket server
-const wss = new WebSocket.Server({ server: server});
+// Set up WebSocket server on the same server as Express
+const wss = new WebSocket.Server({ server: server });
 
 let room: Room;
 wss.on('connection', async (ws, req) => {
     console.log('New WebSocket connection');
-    // Authenticate user via JWT (simplified example)
-    // Parse room ID from query parameters
+
+    // Parse room ID and token from query parameters
     const params = new URLSearchParams(req.url?.substring(1));
     const roomID = params.get('roomID');
     const token = params.get('token');
     console.log('roomID:', roomID);
     console.log('token:', token);
+
+    // Authenticate user via JWT
     let newUser: JWTPayload | undefined;
     try {
         newUser = authenticateJWT(token || '');
@@ -57,8 +65,8 @@ wss.on('connection', async (ws, req) => {
         console.error('Error authenticating user:', error);
     }
 
-    // ERROR handling
-    if (!newUser ) {
+    // Handle authentication errors
+    if (!newUser) {
         const msg = {
             type: 'UNAUTHORIZED',
             message: 'Invalid token provided'
@@ -68,6 +76,7 @@ wss.on('connection', async (ws, req) => {
         return;
     }
 
+    // Handle missing roomID errors
     if (!roomID) {
         const msg = {
             type: 'ERROR',
@@ -77,11 +86,13 @@ wss.on('connection', async (ws, req) => {
         ws.close();
         return;
     }
+
     try {
         await withRetries(async () => {
             await client.watch(`rooms:${roomID}`);
             const roomData = await client.hGet('rooms', roomID);
-            //check if roomID is valid and in db
+
+            // Check if roomID is valid and in the database
             if (!roomData) {
                 const msg = {
                     type: 'NOT_FOUND',
@@ -92,7 +103,7 @@ wss.on('connection', async (ws, req) => {
                 return;
             }
 
-            // Room exists
+            // Room exists, add user to the room
             console.log('User:', newUser);
             room = JSON.parse(roomData);
             console.log('Room:', room);
@@ -101,7 +112,7 @@ wss.on('connection', async (ws, req) => {
             roomClients[roomID] = roomClients[roomID] || new Set();
             roomClients[roomID].add(ws);
 
-            // subscribe to the room channel
+            // Subscribe to the room channel
             await subscribeToRoom(roomID);
 
             // Add user to the room if not already present
@@ -139,7 +150,7 @@ wss.on('connection', async (ws, req) => {
         await client.unwatch();
     }
 
-
+    // Handle incoming messages
     ws.on('message', async (message) => {
         const event = JSON.parse(message as any);
         const roomID = event.roomID;
@@ -148,7 +159,7 @@ wss.on('connection', async (ws, req) => {
         await client.publish(roomID, JSON.stringify(event));
     });
 
-
+    // Handle WebSocket close event
     ws.on('close', async () => {
         try {
             await client.watch(`rooms:${roomID}`);
@@ -158,11 +169,13 @@ wss.on('connection', async (ws, req) => {
                 return;
             }
             room = JSON.parse(roomData);
+
             // Remove user from the room on disconnect
             room.users = room.users.filter(roomUser => roomUser.id !== newUser?.userId);
 
             // Update the room in Redis
             await client.hSet('rooms', roomID, JSON.stringify(room));
+
             // Remove the user from the roomClients map
             roomClients[roomID].delete(ws);
             if (roomClients[roomID].size === 0) {
@@ -186,8 +199,7 @@ wss.on('connection', async (ws, req) => {
         }
     });
 
-
-    // Send ping messages every 30 seconds (keep the connection alive)
+    // Send ping messages every 30 seconds to keep the connection alive
     const pingInterval = setInterval(() => {
         if (ws.readyState === ws.OPEN) {
             ws.ping();
@@ -196,6 +208,7 @@ wss.on('connection', async (ws, req) => {
         }
     }, 30000);
 
+    // Handle pong responses to ping messages
     ws.on('pong', () => {
         console.log('Pong received');
     });

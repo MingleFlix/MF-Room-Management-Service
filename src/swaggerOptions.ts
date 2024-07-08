@@ -1,3 +1,7 @@
+/*
+ * Author: Jesse Günzl
+ * Matrikelnummer: 2577166
+ */
 // Determine the environment
 import path from "node:path";
 
@@ -12,11 +16,6 @@ const options = {
             version: '1.0.0',
             description: 'APIs for managing rooms',
         },
-        // servers: [
-        //     {
-        //         url: 'http://localhost:3001',
-        //     },
-        // ],
         components: {
             schemas: {
                 Room: {

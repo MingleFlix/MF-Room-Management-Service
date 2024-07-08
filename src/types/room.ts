@@ -1,3 +1,8 @@
+/*
+ * Author: Jesse Günzl
+ * Matrikelnummer: 2577166
+ */
+
 export interface createRoomData {
     name: string;
 }
