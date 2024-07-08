@@ -11,7 +11,7 @@ import {Room, UserEvent} from "./types/room";
 import withRetries from "./lib/retryHelper";
 
 dotenv.config();
-const { redisClient, roomClients, subscribeToRoom } = require("./redis");
+const { client, roomClients, subscribeToRoom } = require("./redis");
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -77,11 +77,11 @@ wss.on('connection', async (ws, req) => {
         ws.close();
         return;
     }
-    //check if roomID is valid and in db todo: use transaction to prevent data loss!
     try {
         await withRetries(async () => {
-            await redisClient.watch(`rooms:${roomID}`);
-            const roomData = await redisClient.hGet('rooms', roomID);
+            await client.watch(`rooms:${roomID}`);
+            const roomData = await client.hGet('rooms', roomID);
+            //check if roomID is valid and in db
             if (!roomData) {
                 const msg = {
                     type: 'NOT_FOUND',
@@ -112,7 +112,7 @@ wss.on('connection', async (ws, req) => {
                 });
 
                 // Update the room in Redis
-                await redisClient.hSet('rooms', roomID, JSON.stringify(room));
+                await client.hSet('rooms', roomID, JSON.stringify(room));
 
                 // Notify all users about the new user
                 const newUserEvent: UserEvent = {
@@ -123,7 +123,7 @@ wss.on('connection', async (ws, req) => {
                 };
 
                 // Publish the new user event to all users in the room
-                await redisClient.publish(roomID, JSON.stringify(newUserEvent));
+                await client.publish(roomID, JSON.stringify(newUserEvent));
             }
 
             // Send the current state of the room to the newly joined user
@@ -136,7 +136,7 @@ wss.on('connection', async (ws, req) => {
         console.error('Error handling connection:', error);
         ws.close();
     } finally {
-        await redisClient.unwatch();
+        await client.unwatch();
     }
 
 
@@ -145,14 +145,14 @@ wss.on('connection', async (ws, req) => {
         const roomID = event.roomID;
 
         // Publish the event to Redis
-        await redisClient.publish(roomID, JSON.stringify(event));
+        await client.publish(roomID, JSON.stringify(event));
     });
 
 
     ws.on('close', async () => {
         try {
-            await redisClient.watch(`rooms:${roomID}`);
-            const roomData = await redisClient.hGet('rooms', roomID);
+            await client.watch(`rooms:${roomID}`);
+            const roomData = await client.hGet('rooms', roomID);
             if (!roomData) {
                 console.error('Room not found in Redis');
                 return;
@@ -162,7 +162,7 @@ wss.on('connection', async (ws, req) => {
             room.users = room.users.filter(roomUser => roomUser.id !== newUser?.userId);
 
             // Update the room in Redis
-            await redisClient.hSet('rooms', roomID, JSON.stringify(room));
+            await client.hSet('rooms', roomID, JSON.stringify(room));
             // Remove the user from the roomClients map
             roomClients[roomID].delete(ws);
             if (roomClients[roomID].size === 0) {
@@ -177,12 +177,12 @@ wss.on('connection', async (ws, req) => {
                 users: room.users
             };
 
-            await redisClient.publish(roomID, JSON.stringify(userLeftEvent));
+            await client.publish(roomID, JSON.stringify(userLeftEvent));
         } catch (error) {
             console.error('Error handling connection:', error);
             ws.close();
         } finally {
-            await redisClient.unwatch();
+            await client.unwatch();
         }
     });
 

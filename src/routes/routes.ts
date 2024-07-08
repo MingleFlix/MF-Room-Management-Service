@@ -1,8 +1,7 @@
 import express, {Router} from "express";
 import authMiddleware from "../middlewares/authMiddleware";
-import {randomUUID} from "node:crypto";
-import {redisClient, subscribeToRoom} from "../redis";
-import {createRoomData, Room} from "../types/room";
+import {createRoomData} from "../types/room";
+import {createRoom, deleteRoomById, getAllRooms, getRoomById} from "../handler/room";
 
 const router: Router = express.Router();
 
@@ -29,16 +28,8 @@ router.use(authMiddleware);
  */
 router.post('/', async (req, res) => {
     const {name} = req.body as createRoomData;
-    const roomId = randomUUID()
-    const newRoom: Room = {
-        id: roomId,
-        name,
-        users: [],
-        owner: req.user.userId
-    };
-
-    await redisClient.hSet('rooms', roomId, JSON.stringify(newRoom));
-    await subscribeToRoom(roomId);
+    const userId = req.user!.userId;
+    const newRoom = await createRoom(name, userId);
     res.status(201).json(newRoom);
 });
 
@@ -58,8 +49,7 @@ router.post('/', async (req, res) => {
  *                 $ref: '#/components/schemas/Room'
  */
 router.get('/', async (req, res) => {
-    const rooms = await redisClient.hGetAll('rooms');
-    const roomList: Room[] = Object.values(rooms).map(room => JSON.parse(room));
+    const roomList = await getAllRooms();
     res.json(roomList);
 });
 
@@ -85,7 +75,8 @@ router.get('/', async (req, res) => {
  *         description: Room not found
  */
 router.get('/:id', async (req, res) => {
-    const room = await redisClient.hGet('rooms', req.params.id);
+    const {id} = req.params;
+    const room = await getRoomById(id);
     if (room) {
         res.json(JSON.parse(room));
     } else {
@@ -111,7 +102,12 @@ router.get('/:id', async (req, res) => {
  *         description: Room not found
  */
 router.delete('/:id', async (req, res) => {
-    await redisClient.hDel('rooms', req.params.id);
+    const id = req.params.id;
+    const success = await deleteRoomById(id);
+    if (!success) {
+        res.status(404).send('Room not found');
+        return;
+    }
     res.status(204).send();
 });
 

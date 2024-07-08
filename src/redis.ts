@@ -7,8 +7,8 @@ const redisHost = process.env.REDIS_HOST || 'localhost';
 console.log(`Connecting to Redis at ${redisHost}`);
 
 // Set up Redis client
-export const redisClient = createClient({ url: `redis://${redisHost}:6379` });
-redisClient.connect().catch(console.error);
+export const client = createClient({ url: `redis://${redisHost}:6379` });
+client.connect().catch(console.error);
 
 export const subscriberClient = createClient({url: `redis://${redisHost}:6379`});
 subscriberClient.connect().catch(console.error);
